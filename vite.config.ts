@@ -14,6 +14,7 @@ export default defineConfig({
     environment: "jsdom",
     coverage: {
       reporter: ["text", "json", "json-summary"],
+      // reduce it later!!
       lines: 100,
       branches: 100,
       functions: 100,
