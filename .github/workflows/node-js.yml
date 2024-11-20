@@ -76,16 +76,22 @@ jobs:
 
     name: Deploy to EC2
     runs-on: ubuntu-latest
+
     steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v3
+
     - name: Set up SSH Key
       run: |
-        echo "${{ secrets.EC2_SSH_KEY }}" > ~/ec2_key
-        chmod 600 ~/ec2_key
+        # Create a private key file from the GitHub secret
+        echo "${{ secrets.EC2_SSH_KEY }}" > ~/ec2_key.pem
+        chmod 600 ~/ec2_key.pem
 
     - name: Deploy to Minikube
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << 'EOF'
-        echo "Connecting to EC2 instance..."
+        ssh -o StrictHostKeyChecking=no -i ~/ec2_key.pem ubuntu@51.21.1.89 << 'EOF'
+        echo "Connected to EC2 instance!"
         cd ~/k8s
         kubectl set image deployment/rocketdex-deployment rocketdex=ghcr.io/${{ github.repository }}:${{ github.sha }}
         EOF
+
