@@ -89,3 +89,5 @@ jobs:
         cd ~/k8s
         kubectl set image deployment/rocketdex-deployment rocketdex=ghcr.io/${{ github.repository }}:${{ github.sha }}
         EOF
+
+# test commit
