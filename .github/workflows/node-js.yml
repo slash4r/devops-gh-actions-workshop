@@ -63,8 +63,11 @@ jobs:
 
     - name: Export Tag
       run: |
-        echo "$(echo '${{ steps.meta.outputs.tags }}' | cut -d',' -f1)"
-        echo "TAG=$(echo '${{ steps.meta.outputs.tags }}' | cut -d',' -f1)" >> $GITHUB_ENV
+        echo "Extracting the short SHA tag..."
+        SHORT_TAG=$(echo '${{ steps.meta.outputs.tags }}' | grep -o 'ghcr.io/[^,]*:[a-f0-9]\{7\}')
+        echo "Using tag: $SHORT_TAG"
+        echo "TAG=$SHORT_TAG" >> $GITHUB_ENV
+
 
 
     - name: Build and Push Docker Image
@@ -95,3 +98,4 @@ jobs:
         cd ~/_k8s
         kubectl set image deployment/rocketdex-deployment rocketdex=$TAG
         EOF
+
