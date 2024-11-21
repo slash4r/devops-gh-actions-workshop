@@ -70,10 +70,13 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
+    - name: Export Tag
+      run: echo "TAG=${{ steps.meta.outputs.tags }}" >> $GITHUB_ENV
+
   deploy:
     needs:
       - package-and-publish
-
+  
     name: Deploy to EC2
     runs-on: ubuntu-latest
     steps:
@@ -81,11 +84,11 @@ jobs:
       run: |
         echo "${{ secrets.EC2_SSH_KEY }}" > ~/ec2_key
         chmod 600 ~/ec2_key
-
+  
     - name: Deploy to Minikube
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << 'EOF'
         echo "Connecting to EC2 instance..."
         cd ~/_k8s
-        kubectl set image deployment/rocketdex-deployment rocketdex=ghcr.io/${{ github.repository }}:${{ github.sha }}
+        kubectl set image deployment/rocketdex-deployment rocketdex=ghcr.io/${{ github.repository }}:${{ env.TAG }}
         EOF
