@@ -91,13 +91,10 @@ jobs:
         echo "${{ secrets.EC2_SSH_KEY }}" > ~/ec2_key
         chmod 600 ~/ec2_key
 
-    - name: Debug SHORT_TAG
-      
-      run: |
-        export SHORT_TAG=${{ env.SHORT_TAG }}
-        echo "SHORT_TAG=${{ env.SHORT_TAG }}"
     
     - name: Deploy to Minikube
+      env:
+        TAG: ${{ env.SHORT_TAG }}
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << 'EOF'
         echo "Connecting to EC2 instance..."
@@ -107,6 +104,6 @@ jobs:
         SHORT_TAG="${{ env.SHORT_TAG }}"
         echo "Using tag: $SHORT_TAG or $TAG"
         cd ~/_k8s
-        kubectl set image deployment/rocketdex-deployment rocketdex=$SHORT_TAG
+        kubectl set image deployment/rocketdex-deployment rocketdex=$TAG
         EOF
 
