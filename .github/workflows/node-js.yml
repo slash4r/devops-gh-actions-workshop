@@ -67,6 +67,9 @@ jobs:
         SHORT_TAG=$(echo '${{ steps.meta.outputs.tags }}' | grep -o 'ghcr.io/[^,]*:[a-f0-9]\{7\}')
         echo "Using tag: $SHORT_TAG"
         echo "TAG=$SHORT_TAG" >> $GITHUB_ENV
+        echo "Listing all environment variables..."
+        env
+        echo "End of the list..."
 
 
 
@@ -94,9 +97,16 @@ jobs:
     
     - name: Deploy to Minikube
       env:
-        TAG: ${{ env.SHORT_TAG }}
+        SHORT_TAG: ${{ env.SHORT_TAG }}
+        TAG: ${{ env.TAG }}
       run: |
-        ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << 'EOF'
+        echo "Short: $SHORT_TAG"
+        echo "TAG: $TAG"
+        ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << EOF
+        TAG="${{ env.SHORT_TAG }}"
+        echo "TAG: $TAG"
+        EOF
+
         echo "Connecting to EC2 instance..."
         echo "Environment variables:"
         env
