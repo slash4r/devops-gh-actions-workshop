@@ -95,7 +95,10 @@ jobs:
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << 'EOF'
         echo "Connecting to EC2 instance..."
-        export SHORT_TAG=${{ env.SHORT_TAG }}
+        echo "Environment variables:"
+        env
+        echo "End of variables"
+        SHORT_TAG="${{ env.SHORT_TAG }}"
         echo "Using tag: $SHORT_TAG or $TAG"
         cd ~/_k8s
         kubectl set image deployment/rocketdex-deployment rocketdex=$SHORT_TAG
