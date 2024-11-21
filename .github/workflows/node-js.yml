@@ -95,6 +95,7 @@ jobs:
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << 'EOF'
         echo "Connecting to EC2 instance..."
+        echo $TAG
         cd ~/_k8s
         kubectl set image deployment/rocketdex-deployment rocketdex=$TAG
         EOF
