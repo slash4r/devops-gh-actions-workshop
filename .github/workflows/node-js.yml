@@ -89,7 +89,7 @@ jobs:
   deploy:
     needs:
       - package-and-publish
-
+  
     name: Deploy to EC2
     runs-on: ubuntu-latest
     steps:
@@ -97,7 +97,7 @@ jobs:
       run: |
         echo "${{ secrets.EC2_SSH_KEY }}" > ~/ec2_key
         chmod 600 ~/ec2_key
-
+  
     - name: Debug Exported Environment Variables
       run: |
         echo "Debugging exported environment variables..."
@@ -105,26 +105,33 @@ jobs:
         echo "Listing all environment variables:"
         env
         echo "End list..."
-
+  
     - name: Deploy to Minikube
       env:
-        TAG: ${{ env.TAG }}
+        TAG: ${{ env.TAG }}  # Ensure TAG is passed into the step
       run: |
         echo "Connecting to EC2 instance..."
-        ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << 'EOF'
+        ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << EOF
           echo "Connected to EC2 instance."
           echo "Using TAG: $TAG"
-
+  
           # Navigate to the deployment directory
           cd ~/_k8s
-
+  
+          # Check if TAG is empty
+          if [ -z "$TAG" ]; then
+            echo "Error: TAG is not set or empty. Exiting."
+            exit 1
+          fi
+  
           # Update the deployment with the new image tag
           echo "Updating Kubernetes deployment with image tag: $TAG"
           kubectl set image deployment/rocketdex-deployment rocketdex=$TAG
-
+  
           # Verify the deployment
           echo "Verifying deployment..."
           kubectl rollout status deployment/rocketdex-deployment
         EOF
+
 
 
