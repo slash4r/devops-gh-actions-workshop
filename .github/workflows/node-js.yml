@@ -15,18 +15,18 @@ jobs:
       contents: read
       pull-requests: write
     steps:
-    - uses: actions/checkout@v3
-    - name: Use Node.js 16.x
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16.x
-        cache: npm
-    - run: npm ci
-    - run: npm run build --if-present
-    - run: npm test
-    - name: Report Coverage
-      uses: davelosert/vitest-coverage-report-action@v2
-      if: always()
+      - uses: actions/checkout@v3
+      - name: Use Node.js 16.x
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: npm
+      - run: npm ci
+      - run: npm run build --if-present
+      - run: npm test
+      - name: Report Coverage
+        uses: davelosert/vitest-coverage-report-action@v2
+        if: always()
 
   package-and-publish:
     needs:
@@ -37,101 +37,98 @@ jobs:
     permissions:
       contents: read
       packages: write
-
+    outputs:
+      tag: ${{ steps.export-tag.outputs.tag }} # Output for the `TAG` variable
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
-    - name: Sign in to GitHub Container Registry
-      uses: docker/login-action@v2
-      with:
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-        registry: ghcr.io
+      - name: Sign in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+          registry: ghcr.io
 
-    - name: Generate Docker Metadata
-      id: meta
-      uses: docker/metadata-action@v4
-      with:
-        images: ghcr.io/${{ github.repository }}
-        tags: |
-          type=ref,event=tag
-          type=ref,event=pr
-          type=sha,event=branch,prefix=,suffix=,format=short
+      - name: Generate Docker Metadata
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=tag
+            type=ref,event=pr
+            type=sha,event=branch,prefix=,suffix=,format=short
 
-    - name: Export Tag
-      run: |
-        echo "Extracting the short SHA tag..."
-        TAG=$(echo '${{ steps.meta.outputs.tags }}' | grep -o 'ghcr.io/[^,]*:[a-f0-9]\{7\}')
-        echo "Using tag: $TAG"
-        echo "TAG=$TAG" >> $GITHUB_ENV
-        
-    - name: Debug Environment Variables
-      run: |
-        echo "Checking TAG in the next step..."
-        echo "TAG=${{ env.TAG }}"
-        echo "Start list..."
-        env
-        echo "End list..."
-        
+      - name: Export Tag
+        id: export-tag
+        run: |
+          echo "Extracting the short SHA tag..."
+          TAG=$(echo '${{ steps.meta.outputs.tags }}' | grep -o 'ghcr.io/[^,]*:[a-f0-9]\{7\}')
+          echo "Using tag: $TAG"
+          echo "::set-output name=tag::$TAG" # Set output for the job
 
-    - name: Build and Push Docker Image
-      uses: docker/build-push-action@v2
-      with:
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
+      - name: Debug Environment Variables
+        run: |
+          echo "Checking TAG in the next step..."
+          echo "TAG=${{ steps.export-tag.outputs.tag }}"
+          echo "Start list..."
+          env
+          echo "End list..."
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v2
+        with:
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   deploy:
     needs:
       - package-and-publish
-  
+
     name: Deploy to EC2
     runs-on: ubuntu-latest
     steps:
-    - name: Set up SSH Key
-      run: |
-        echo "${{ secrets.EC2_SSH_KEY }}" > ~/ec2_key
-        chmod 600 ~/ec2_key
-  
-    - name: Debug Exported Environment Variables
-      run: |
-        echo "Debugging exported environment variables..."
-        echo "TAG=${{ env.TAG }}"
-        echo "Listing all environment variables:"
-        env
-        echo "End list..."
-  
-    - name: Deploy to Minikube
-      env:
-        TAG: ${{ env.TAG }}  # Ensure TAG is passed into the step
-      run: |
-        echo "Connecting to EC2 instance..."
-        ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << EOF
-          echo "Connected to EC2 instance."
-          echo "Using TAG: $TAG"
-  
-          # Navigate to the deployment directory
-          cd ~/_k8s
-  
-          # Check if TAG is empty
-          if [ -z "$TAG" ]; then
-            echo "Error: TAG is not set or empty. Exiting."
-            exit 1
-          fi
-  
-          # Update the deployment with the new image tag
-          echo "Updating Kubernetes deployment with image tag: $TAG"
-          kubectl set image deployment/rocketdex-deployment rocketdex=$TAG
-  
-          # Verify the deployment
-          echo "Verifying deployment..."
-          kubectl rollout status deployment/rocketdex-deployment
-        EOF
+      - name: Set up SSH Key
+        run: |
+          echo "${{ secrets.EC2_SSH_KEY }}" > ~/ec2_key
+          chmod 600 ~/ec2_key
 
+      - name: Debug Job Output
+        run: |
+          echo "Job output TAG: ${{ needs.package-and-publish.outputs.tag }}"
+          echo "Listing all environment variables:"
+          env
+          echo "End list..."
 
+      - name: Deploy to Minikube
+        env:
+          TAG: ${{ needs.package-and-publish.outputs.tag }} # Pass the output as an environment variable
+        run: |
+          echo "Connecting to EC2 instance..."
+          ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@51.21.1.89 << EOF
+            echo "Connected to EC2 instance."
+            echo "Using TAG: $TAG"
 
+            # Navigate to the deployment directory
+            cd ~/_k8s
+
+            # Check if TAG is empty
+            if [ -z "$TAG" ]; then
+              echo "Error: TAG is not set or empty. Exiting."
+              exit 1
+            fi
+
+            # Update the deployment with the new image tag
+            echo "Updating Kubernetes deployment with image tag: $TAG"
+            kubectl set image deployment/rocketdex-deployment rocketdex=$TAG
+
+            # Verify the deployment
+            echo "Verifying deployment..."
+            kubectl rollout status deployment/rocketdex-deployment
+          EOF
