@@ -89,31 +89,3 @@ jobs:
         cd ~/_k8s
         kubectl set image deployment/rocketdex-deployment rocketdex=ghcr.io/${{ github.repository }}:${{ github.sha }}
         EOF
-    - name: Build and Push Docker Image
-      uses: docker/build-push-action@v2
-      with:
-        push: true
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-  deploy:
-    needs:
-      - package-and-publish
-
-    name: Deploy to EC2
-    runs-on: ubuntu-latest
-    steps:
-    - name: Set up SSH Key
-      run: |
-        echo "${{ secrets.EC2_SSH_KEY }}" > ~/ec2_key
-        chmod 600 ~/ec2_key
-
-    - name: Deploy to Minikube
-      run: |
-        ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@13.60.212.51 << 'EOF'
-        echo "Connecting to EC2 instance..."
-        cd ~/_k8s
-        kubectl set image deployment/rocketdex-deployment rocketdex=ghcr.io/${{ github.repository }}:${{ github.sha }}
-        EOF
