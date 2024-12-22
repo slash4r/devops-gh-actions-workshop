@@ -3,11 +3,11 @@ kind: Service
 metadata:
   name: rocketdex-service
 spec:
-  type: NodePort
   selector:
     app: rocketdex
+  type: NodePort
   ports:
   - protocol: TCP
     port: 8080
     targetPort: 8080
-    nodePort: 30000  # can be any port in 30000–32767
+    nodePort: 30000
