@@ -86,7 +86,7 @@ jobs:
       run: |
         ssh -o StrictHostKeyChecking=no -i ~/ec2_key ubuntu@13.60.212.51 << 'EOF'
         echo "Connecting to EC2 instance..."
-        SHORT_SHA=${{ github.sha::7 }}
+        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
         echo "Using new TAG: ghcr.io/${{ github.repository }}:${SHORT_SHA}"
         kubectl set image deployment/rocketdex-deployment rocketdex=ghcr.io/${{ github.repository }}:${SHORT_SHA}
         kubectl rollout status deployment/rocketdex-deployment
